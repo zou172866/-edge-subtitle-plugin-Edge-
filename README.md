@@ -4,6 +4,17 @@
 
 基于 [VideoCaptioner](https://github.com/WEIFENG2333/VideoCaptioner) 项目思路开发。
 
+
+## ⚡ 快速开始
+
+1. 安装依赖：`pip install faster-whisper fastapi uvicorn nvidia-cublas-cu12`
+2. 双击 `start_server.bat` 启动 Whisper 服务
+3. Edge 打开 `edge://extensions`，开启"开发人员模式"，加载本项目目录
+4. 打开任意视频网页，点右下角「🎬 字幕」
+
+
+
+
 ## 功能
 
 - 🎬 **视频音频捕获**：自动检测页面中的 `<video>` 元素，捕获其音频输出
