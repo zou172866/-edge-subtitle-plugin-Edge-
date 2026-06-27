@@ -3,12 +3,12 @@
 const STORAGE_KEY = "extensionActive";
 
 async function getActiveState() {
-  const result = await chrome.storage.session.get({ [STORAGE_KEY]: false });
+  const result = await chrome.storage.local.get({ [STORAGE_KEY]: false });
   return result[STORAGE_KEY];
 }
 
 async function setActiveState(active) {
-  await chrome.storage.session.set({ [STORAGE_KEY]: active });
+  await chrome.storage.local.set({ [STORAGE_KEY]: active });
   updateIcon(active);
 }
 

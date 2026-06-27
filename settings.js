@@ -94,6 +94,13 @@ async function refreshAudioInputs() {
 
 async function saveSettings() {
   try {
+    // 校验服务地址格式
+    const urlValue = els.whisperUrl.value.trim();
+    if (!/^https?:\/\/.+/.test(urlValue)) {
+      alert("服务地址格式错误，必须以 http:// 或 https:// 开头");
+      return;
+    }
+
     const settings = {
       engine: "whisper",
       language: els.language.value,
@@ -101,7 +108,7 @@ async function saveSettings() {
       maxLines: parseInt(els.maxLines.value),
       bottomOffset: parseInt(els.bottomOffset.value),
       opacity: parseFloat(els.opacity.value),
-      whisperUrl: els.whisperUrl.value,
+      whisperUrl: urlValue,
       apiKey: els.apiKey.value,
       whisperModel: els.whisperModel.value,
       sliceInterval: parseInt(els.sliceInterval.value),
@@ -114,7 +121,12 @@ async function saveSettings() {
     for (const tab of tabs) {
       try {
         await chrome.tabs.sendMessage(tab.id, { type: "update-settings" });
-      } catch (e) {}
+      } catch (e) {
+        if (!e.message.includes("Could not establish connection") &&
+            !e.message.includes("receiving end does not exist")) {
+          console.warn("[RT-Caption] 通知标签页失败:", tab.id, e.message);
+        }
+      }
     }
     showToast();
   } catch (e) {

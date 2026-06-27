@@ -17,6 +17,7 @@ import time
 import glob
 import logging
 import tempfile
+import threading
 from typing import Optional
 from contextlib import asynccontextmanager
 
@@ -95,7 +96,10 @@ DEVICE = os.environ.get("WHISPER_DEVICE") or ("cuda" if _has_cuda() else "cpu")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE") or ("float16" if DEVICE == "cuda" else "int8")
 # 模型本地路径（可选，跳过下载）
 MODEL_DIR = os.environ.get("WHISPER_MODEL_DIR") or ""
+# beam_size：越大精度越高但速度越慢，1-10，默认5
+BEAM_SIZE = int(os.environ.get("WHISPER_BEAM_SIZE", "5"))
 
+stats_lock = threading.Lock()
 stats = {"total_requests": 0, "total_audio_sec": 0.0, "total_process_sec": 0.0}
 model = None
 model_size = DEFAULT_MODEL_SIZE
@@ -165,7 +169,7 @@ async def transcribe(request: Request, audio: UploadFile = File(...), language: 
 
     try:
         process_start = time.time()
-        segments_gen, info = model.transcribe(tmp_path, beam_size=5, language=language or None)
+        segments_gen, info = model.transcribe(tmp_path, beam_size=BEAM_SIZE, language=language or None)
         segments = list(segments_gen)
         elapsed = time.time() - process_start
 
@@ -182,9 +186,10 @@ async def transcribe(request: Request, audio: UploadFile = File(...), language: 
 
         full_text = "".join(s.text for s in segments).strip()
 
-        stats["total_requests"] += 1
-        stats["total_audio_sec"] += duration
-        stats["total_process_sec"] += elapsed
+        with stats_lock:
+            stats["total_requests"] += 1
+            stats["total_audio_sec"] += duration
+            stats["total_process_sec"] += elapsed
 
         logger.info(
             f"✅ 识别完成 | {detected_lang} | {duration:.1f}s | "

@@ -1,5 +1,5 @@
-// ===== 实时字幕 Edge 扩展 - content script v4.1 =====
-// 从页面 <video> 捕获音频 → ScriptProcessorNode → PCM WAV → Whisper 服务
+// ===== 实时字幕 Edge 扩展 - content script v4.2 =====
+// v4.2: 字幕时间偏移改为发送时记录，解决视频暂停/跳转后时间不准的问题
 console.log("[RT-Caption] content script loaded");
 
 // ---- 工具: 获取设置 ----
@@ -249,14 +249,16 @@ class VideoAudioCapture {
 
 // ---- Whisper 客户端 ----
 class WhisperClient {
-  constructor(onResult, onError) {
+  constructor(onResult, onError, onVideoTime) {
     this.onResult = onResult;
     this.onError = onError;
+    this.onVideoTime = onVideoTime;      // 回调: 获取当前视频时间（秒）
     this.running = false;
     this.whisperUrl = "";
     this.apiKey = "";
     this.sliceInterval = 3000;
     this.sliceTimer = null;
+    this._lastSliceVideoTime = 0;        // 本切片发送时的视频时间（精确值）
     this.lastSendTime = 0;
     this.accumulatedSamples = [];
   }
@@ -300,6 +302,10 @@ class WhisperClient {
     const accLen = this.accumulatedSamples.length;
     if (accLen < 1600) return;
 
+    // 精确记录切片发送时的视频时间，用于字幕对齐
+    if (this.onVideoTime) {
+      this._lastSliceVideoTime = this.onVideoTime();
+    }
     const samples = this.accumulatedSamples;
     this.accumulatedSamples = [];
 
@@ -310,6 +316,7 @@ class WhisperClient {
   }
 
   async _sendChunk(samples) {
+    const sliceVideoTime = this._lastSliceVideoTime;  // 捕获发送时刻的视频时间
     const wavBuffer = encodeWAV(samples, 16000);
     const blob = new Blob([wavBuffer], { type: "audio/wav" });
 
@@ -339,7 +346,7 @@ class WhisperClient {
       const data = await resp.json();
       console.log("[RT-Caption] Whisper response received, segments:", data.segments?.length, "text:", data.text?.slice(0,30));
       if (data.segments && data.segments.length > 0) {
-        if (this.onResult) this.onResult(data.segments);
+        if (this.onResult) this.onResult(data.segments, sliceVideoTime);
       }
     } catch (e) {
       console.warn("[RT-Caption] Whisper 请求失败:", e.message);
@@ -407,15 +414,28 @@ class CaptionTimeline {
     this.segments = this.segments.filter(s => s.end > currentTimeSec - 60);
   }
 
+  // 基于最长公共子序列(LCS)计算文本重叠度，避免朴素字符匹配的误判
+  // 返回 0~1，越高越相似。阈值 0.85 用于去重判断。
   _textOverlap(a, b) {
     if (!a || !b) return 0;
-    const short = a.length < b.length ? a : b;
-    const long = a.length < b.length ? b : a;
-    let matches = 0;
-    for (const ch of short) {
-      if (long.includes(ch)) matches++;
+    const m = a.length, n = b.length;
+    // 用滚动数组优化空间 O(min(m,n))
+    if (m < n) return this._textOverlap(b, a);  // 确保 a 是较长的
+    const prev = new Uint16Array(n + 1);
+    const curr = new Uint16Array(n + 1);
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (a.charCodeAt(i - 1) === b.charCodeAt(j - 1)) {
+          curr[j] = prev[j - 1] + 1;
+        } else {
+          curr[j] = prev[j] > curr[j - 1] ? prev[j] : curr[j - 1];
+        }
+      }
+      // 交换引用，避免复制
+      const tmp = prev; prev.set(curr); curr.fill(0);
     }
-    return matches / short.length;
+    const lcs = prev[n];
+    return lcs / Math.min(m, n);
   }
 }
 
@@ -762,12 +782,13 @@ class CaptionManager {
     this.engineLabel.textContent = "Whisper";
 
     this.whisperClient = new WhisperClient(
-      (segments) => this._onWhisperResult(segments),
+      (segments, sliceVideoTime) => this._onWhisperResult(segments, sliceVideoTime),
       (err) => {
         console.warn("[RT-Caption] Whisper 错误:", err);
         this._setIndicator("error");
         setTimeout(() => { if (this.isActive) this._setIndicator("listening"); }, 3000);
-      }
+      },
+      () => this.videoCurrentTime   // 提供精确视频时间戳
     );
     this.whisperClient.start(
       this.settings.whisperUrl,
@@ -846,7 +867,7 @@ class CaptionManager {
     if (this.currentVideo) this._showHint();
   }
 
-  _onWhisperResult(segments) {
+  _onWhisperResult(segments, sliceVideoTime) {
     if (!this.isActive || !segments || segments.length === 0) return;
     // 过滤噪音识别：跳过纯数字/单字符的虚假识别结果
     const meaningful = segments.filter(s => {
@@ -859,8 +880,12 @@ class CaptionManager {
       return true;
     });
     if (meaningful.length === 0) return;
-    // 将 segments 时间偏移到视频时间线（Whisper 返回的是切片内相对时间）
-    const sliceStart = this.videoCurrentTime - (this.settings?.sliceInterval || 3000) / 1000;
+    // 将 segments 时间偏移到视频时间线
+    // sliceVideoTime: 切片发送时的精确视频时间（秒），不再用反推估算
+    // 向后兼容：如果回调未提供（v4.1 客户端），回退到反推方式
+    const sliceStart = (sliceVideoTime != null)
+      ? sliceVideoTime
+      : (this.videoCurrentTime - (this.settings?.sliceInterval || 3000) / 1000);
     const offsetSegments = meaningful.map(s => ({
       ...s,
       start: sliceStart + s.start,
