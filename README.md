@@ -7,7 +7,7 @@
 
 ## ⚡ 快速开始
 
-1. 安装依赖：`pip install faster-whisper fastapi uvicorn nvidia-cublas-cu12`
+1. 安装依赖：`pip install torch faster-whisper fastapi uvicorn python-multipart nvidia-cublas-cu12`
 2. 双击 `start_server.bat` 启动 Whisper 服务
 3. Edge 打开 `edge://extensions`，开启"开发人员模式"，加载本项目目录
 4. 打开任意视频网页，点右下角「🎬 字幕」
@@ -52,7 +52,7 @@
 **需要 CUDA 显卡 (如 RTX 3060+ / RTX 5070 Ti)**
 
 ```bash
-pip install faster-whisper fastapi uvicorn nvidia-cublas-cu12
+pip install torch faster-whisper fastapi uvicorn python-multipart nvidia-cublas-cu12
 ```
 
 ### 3. 启动服务
