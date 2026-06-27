@@ -1,0 +1,127 @@
+﻿/* ===== 实时字幕浮动层样式 v3 ===== */
+
+#rt-caption-container {
+  all: initial; width: auto !important;
+  position: fixed !important;
+  bottom: 60px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 2147483647 !important;
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, sans-serif !important;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 0.3s ease, bottom 0.2s ease;
+  max-width: 80vw !important;
+  min-width: auto !important;
+  text-align: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  opacity: var(--rt-opacity, 0.75) !important;
+}
+
+#rt-caption-container.rt-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 顶部控制栏 */
+#rt-caption-bar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 4px 12px !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  border-radius: 8px 8px 0 0 !important;
+  pointer-events: auto !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease !important;
+  margin-bottom: 4px !important;
+}
+
+#rt-caption-container:hover #rt-caption-bar {
+  opacity: 1 !important;
+  cursor: grab !important;
+}
+
+#rt-caption-status {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+#rt-indicator {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  display: inline-block !important;
+}
+
+#rt-indicator.rt-idle { background: #666 !important; }
+#rt-indicator.rt-connecting {
+  background: #ff9800 !important;
+  animation: rt-pulse 1s ease-in-out infinite !important;
+}
+#rt-indicator.rt-listening {
+  background: #4caf50 !important;
+  animation: rt-pulse 1.5s ease-in-out infinite !important;
+}
+#rt-indicator.rt-error { background: #f44336 !important; }
+
+@keyframes rt-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.6); }
+  50% { box-shadow: 0 0 0 6px rgba(76, 175, 80, 0); }
+}
+
+#rt-engine-label {
+  color: #aaa !important;
+  font-size: 10px !important;
+}
+
+#rt-caption-close {
+  color: #ccc !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  padding: 0 4px !important;
+  line-height: 1 !important;
+}
+#rt-caption-close:hover {
+  color: #fff !important;
+}
+
+/* 字幕区 */
+#rt-captions {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 6px !important;
+  pointer-events: none !important;
+}
+
+.rt-caption-line {
+  display: inline-block !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  color: #ffffff !important;
+  padding: 8px 20px !important;
+  border-radius: 8px !important;
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  line-height: 1.4 !important;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.5),
+    0 0 2px rgba(0, 0, 0, 0.3) !important;
+  max-width: 100% !important;
+  word-wrap: break-word !important;
+}
+
+
+.rt-caption-line.rt-size-small { font-size: 20px !important; padding: 6px 14px !important; }
+.rt-caption-line.rt-size-medium { font-size: 28px !important; padding: 8px 18px !important; }
+.rt-caption-line.rt-size-large { font-size: 36px !important; padding: 10px 22px !important; }
+
+.rt-caption-line.rt-error-msg {
+  background: rgba(244, 67, 54, 0.8) !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+}
+

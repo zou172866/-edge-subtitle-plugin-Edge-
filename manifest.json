@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "实时中文字幕 - Real-time Caption",
+  "version": "1.0.0",
+  "description": "为网页 HTML5 视频添加实时中英文字幕，基于本地 Whisper 语音识别",
+  "author": "VideoCaptioner",
+  "permissions": ["storage", "activeTab"],
+  "optional_permissions": [],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "实时字幕 - 点击切换",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["subtitle.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*", "settings.html", "settings.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "options_page": "settings.html"
+}
