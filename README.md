@@ -51,26 +51,46 @@
 ### 2. 安装依赖
 
 **环境要求**
-- Python 3.10+（推荐 3.11）
-- CUDA 13.x（PyTorch cu132 + nvidia-cublas）
-- NVIDIA 显卡 + 驱动（RTX 3060 及以上）
+
+| 环境 | 要求 | 说明 |
+|------|------|------|
+| Python | 3.10+（推荐 3.11） | [python.org](https://python.org) 下载安装 |
+| 显卡 | NVIDIA RTX 3060 及以上 | 驱动去 [nvidia.com/drivers](https://www.nvidia.com/download/) 下载 |
+| CUDA | 13.x | **不需要单独装 CUDA Toolkit**，PyTorch cu132 自带 |
+| 显存 | ≥ 5GB | medium 模型 ~5GB，large-v3-turbo ~6GB，large-v3 ~10GB |
 
 ```bash
 pip install -r requirements.txt
 ```
 
+> **下载量最大的包是 torch（~2.5GB）和 nvidia-cublas（~600MB），建议开代理或等一等。**
+
 **依赖说明**
 
-| 依赖 | 服务端 | 说明 |
-|------|:---:|------|
-| `torch` | ✅ | GPU 检测 + 深度学习运行时 |
-| `faster-whisper` | ✅ | Whisper 引擎（CTranslate2，模型 ~1.6GB） |
-| `fastapi` | ✅ | REST API 框架（/asr /health /stats） |
-| `uvicorn` | ✅ | HTTP 服务器 |
-| `python-multipart` | ✅ | 音频文件上传解析（WAV → ASR） |
-| `nvidia-cublas` | ✅ | CTranslate2 GPU 推理所需 cuBLAS（CUDA 13.x） |
+| 依赖 | 版本要求 | 大小 | 作用 |
+|------|----------|------|------|
+| `torch` | `≥2.0` | ~2.5GB | GPU 深度学习运行时，装 CUDA 版 |
+| `faster-whisper` | `≥1.0` | ~300MB | Whisper 语音识别引擎（基于 CTranslate2） |
+| `fastapi` | `≥0.100` | ~100MB | REST API 框架，提供 `/asr` `/health` `/stats` 接口 |
+| `uvicorn` | `≥0.22` | ~10MB | HTTP 服务器，监听 `127.0.0.1:8760` |
+| `python-multipart` | `≥0.0.6` | ~1MB | 解析浏览器 POST 过来的 WAV 音频数据 |
+| `nvidia-cublas` | `≥13.5` | ~600MB | CTranslate2 GPU 推理的 cuBLAS 库，**没它 GPU 跑不了** |
 
 扩展端（content.js / background.js / settings）为纯前端 JavaScript，无需额外安装。
+
+#### 首次运行：自动下载模型
+
+`faster-whisper` 第一次启动时会自动从 HuggingFace 下载语音识别模型。
+
+| 模型 | 大小 | 存放在 |
+|------|------|--------|
+| large-v3-turbo（默认） | ~1.6GB | `%USERPROFILE%\.cache\huggingface\hub\` |
+
+> **如果下载慢或连不上**，设置 HuggingFace 镜像后再启动：
+> ```bash
+> set HF_ENDPOINT=https://hf-mirror.com
+> python whisper_server.py
+> ```
 
 ### 3. 启动服务
 
@@ -146,20 +166,37 @@ python whisper_server.py
 
 ## 常见问题
 
+**Q: pip install 太慢 / 下载失败？**
+设置国内 PyPI 镜像：
+```bash
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+**Q: torch 装完后 CUDA 不可用？**
+PyTorch 可能装成了 CPU 版。重装 CUDA 版：
+```bash
+pip uninstall torch
+pip install torch --index-url https://download.pytorch.org/whl/cu132
+```
+验证：
+```bash
+python -c "import torch; print(torch.cuda.is_available())"
+```
+
+**Q: 服务启动报 cublas64_12.dll 找不到？**
+```bash
+pip install nvidia-cublas-cu12
+```
+重启服务。
+
+**Q: 字幕延迟高？**
+在设置中将音频切片间隔从 3 秒改为 2 秒可降低延迟，但会增加 GPU 负载。
+
 **Q: 扩展检测不到视频？**
 确保视频是 HTML5 `<video>` 元素。某些网站使用自定义播放器（如 SHPlayer），换个网站测试。
 
 **Q: 没有声音输出了？**
 扩展优先使用 `captureStream` 捕获视频音频，不影响原视频声音。如果降级到 `createMediaElementSource` 可能静音。
-
-**Q: 服务启动报 cublas64_12.dll 找不到？**
-安装 `pip install nvidia-cublas-cu12`，重启服务。
-
-**Q: 字幕延迟高？**
-在设置中将音频切片间隔从 3 秒改为 2 秒可降低延迟，但会增加 GPU 负载。
-
-**Q: CUDA 不可用？**
-运行 `python -c "import torch; print(torch.cuda.is_available())"` 检查。RTX 5070 Ti 需 PyTorch 2.8+ cu128 以上。
 
 ## 许可证
 
