@@ -20,18 +20,50 @@ import tempfile
 from typing import Optional
 from contextlib import asynccontextmanager
 
-# 自动添加 nvidia CUDA DLL 路径（解决 cublas64_12.dll 找不到的问题）
-_python_root = os.path.dirname(os.path.dirname(sys.executable))
+# 自动添加 CUDA DLL 路径（解决 cublas64_12.dll 找不到 / 版本不匹配问题）
+# ctranslate2 的原生 C++ 代码用 Windows LoadLibrary，必须改 PATH 才能影响它。
+# 策略：只收集 nvidia pip 包中真正包含 DLL 的目录，插入 PATH 最前面。
+# 注意：不添加 torch/lib，因为 PyTorch 自带的 cuBLAS DLL 与 nvidia pip 包版本冲突。
+_python_root = os.path.dirname(sys.executable)
+_pip_dll_dirs = []
 _nvidia_pattern = os.path.join(_python_root, "Lib", "site-packages", "nvidia", "*", "bin")
 for _d in sorted(glob.glob(_nvidia_pattern)):
-    if os.path.isdir(_d) and _d not in os.environ.get("PATH", ""):
-        os.add_dll_directory(_d) if hasattr(os, "add_dll_directory") else os.environ.__setitem__(
-            "PATH", _d + os.pathsep + os.environ.get("PATH", "")
-        )
+    if not os.path.isdir(_d):
+        continue
+    # bin 目录本身有 DLL 就加
+    if glob.glob(os.path.join(_d, "*.dll")):
+        _pip_dll_dirs.append(_d)
+    # 递归一级子目录（如 x86_64），只加有 DLL 的
+    try:
+        for _sub in sorted(os.listdir(_d)):
+            _p = os.path.join(_d, _sub)
+            if os.path.isdir(_p) and glob.glob(os.path.join(_p, "*.dll")):
+                _pip_dll_dirs.append(_p)
+    except OSError:
+        pass
 
-from fastapi import FastAPI, UploadFile, File, Request, HTTPException
+for _dir in _pip_dll_dirs:
+    if hasattr(os, "add_dll_directory"):
+        os.add_dll_directory(_dir)
+_current_path = os.environ.get("PATH", "")
+os.environ["PATH"] = os.pathsep.join(_pip_dll_dirs) + os.pathsep + _current_path
+
+from fastapi import FastAPI, UploadFile, File, Form, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+
+# 抢先预加载 cuBLAS DLL，确保 ctranslate2 后续惰性加载时能找到正确版本
+# ctranslate2 在 GPU 推理时才通过 LoadLibrary 加载 cuBLAS，Windows DLL 搜索
+# 会优先命中已加载模块，因此预先用 ctypes 加载即可劫持后续的 LoadLibrary 调用。
+import ctypes as _ctypes
+for _dir in _pip_dll_dirs:
+    for _dll_name in ("cublas64_12.dll", "cublasLt64_12.dll"):
+        _dll_path = os.path.join(_dir, _dll_name)
+        if os.path.isfile(_dll_path):
+            try:
+                _ctypes.CDLL(_dll_path)
+            except Exception:
+                pass
 
 try:
     from faster_whisper import WhisperModel
@@ -117,7 +149,7 @@ async def health(request: Request):
 
 
 @app.post("/asr")
-async def transcribe(request: Request, audio: UploadFile = File(...)):
+async def transcribe(request: Request, audio: UploadFile = File(...), language: Optional[str] = Form(None)):
     verify_api_key(request)
     if not model_loaded:
         raise HTTPException(status_code=503, detail="模型未加载")
@@ -133,7 +165,7 @@ async def transcribe(request: Request, audio: UploadFile = File(...)):
 
     try:
         process_start = time.time()
-        segments_gen, info = model.transcribe(tmp_path, beam_size=5, language=None)
+        segments_gen, info = model.transcribe(tmp_path, beam_size=5, language=language or None)
         segments = list(segments_gen)
         elapsed = time.time() - process_start
 

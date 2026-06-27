@@ -1,4 +1,4 @@
-﻿// ===== 实时字幕 Edge 扩展 - content script v4.1 =====
+// ===== 实时字幕 Edge 扩展 - content script v4.1 =====
 // 从页面 <video> 捕获音频 → ScriptProcessorNode → PCM WAV → Whisper 服务
 console.log("[RT-Caption] content script loaded");
 
@@ -13,7 +13,7 @@ function getSettings() {
     opacity: 0.75,
     whisperUrl: "http://127.0.0.1:8760",
     apiKey: "",
-    whisperModel: "large-v3",
+    whisperModel: "large-v3-turbo",
     sliceInterval: 3000,
     audioInputDeviceId: "",
   });

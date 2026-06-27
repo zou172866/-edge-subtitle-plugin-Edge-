@@ -1,0 +1,9 @@
+# 实时字幕 Edge 扩展 - 本地 Whisper 语音识别服务依赖
+# 安装: pip install -r requirements.txt
+
+torch>=2.0
+faster-whisper>=1.0
+fastapi>=0.100
+uvicorn>=0.22
+python-multipart>=0.0.6
+nvidia-cublas>=13.0

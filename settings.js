@@ -9,7 +9,7 @@ const DEFAULTS = {
   opacity: 0.75,
   whisperUrl: "http://127.0.0.1:8760",
   apiKey: "",
-  whisperModel: "large-v3",
+  whisperModel: "large-v3-turbo",
   sliceInterval: 3000,
   audioInputDeviceId: "",
 };

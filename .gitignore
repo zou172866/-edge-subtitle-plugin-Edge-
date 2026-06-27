@@ -24,6 +24,9 @@ Thumbs.db
 # Codewhale internal
 .codewhale/
 
+# Whisper 模型缓存
+.cache/huggingface/
+
 # Temp files
 *.tmp
 *.temp

@@ -1,11 +1,11 @@
 @echo off
 cd /d "%~dp0"
 
-set "NVIDIA_BIN=%USERPROFILE%\AppData\Local\Programs\Python\Python311\Lib\site-packages\nvidia\cublas\bin"
-set "NVRTC_BIN=%USERPROFILE%\AppData\Local\Programs\Python\Python311\Lib\site-packages\nvidia\cuda_nvrtc\bin"
-set "PATH=%NVIDIA_BIN%;%NVRTC_BIN%;%PATH%"
-
-set "WHISPER_MODEL_DIR=%USERPROFILE%\.cache\huggingface\hub\models--mobiuslabsgmbh--faster-whisper-large-v3-turbo\snapshots\0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf"
+:: whisper_server.py auto-detects NVIDIA CUDA DLL paths.
+:: Supports WHISPER_MODEL / WHISPER_MODEL_DIR env vars.
+:: Uncomment below to set manually:
+:: set WHISPER_MODEL=large-v3-turbo
+:: set WHISPER_MODEL_DIR=C:\path\to\model
 
 python whisper_server.py
 pause
