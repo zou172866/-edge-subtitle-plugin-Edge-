@@ -1,4 +1,4 @@
-# 🎬 实时中文字幕 - Edge 扩展
+﻿# 🎬 实时中文字幕 - Edge 扩展
 
 为 **网页 HTML5 视频** 添加实时中文字幕。基于本地 faster-whisper 服务捕获视频音频流进行 GPU 语音识别。
 
@@ -49,11 +49,27 @@
 
 ### 2. 安装依赖
 
-**需要 CUDA 显卡 (如 RTX 3060+ / RTX 5070 Ti)**
+**环境要求**
+- Python 3.10+（推荐 3.11）
+- CUDA 12.x / 13.x（RTX 5070 Ti 需要 CUDA 12.8+）
+- NVIDIA 显卡 + 驱动（RTX 3060 及以上）
 
 ```bash
 pip install torch faster-whisper fastapi uvicorn python-multipart nvidia-cublas-cu12
 ```
+
+**依赖说明**
+
+| 依赖 | 服务端 | 说明 |
+|------|:---:|------|
+| `torch` | ✅ | GPU 检测 + 深度学习运行时 |
+| `faster-whisper` | ✅ | Whisper 引擎（CTranslate2，模型 ~1.6GB） |
+| `fastapi` | ✅ | REST API 框架（/asr /health /stats） |
+| `uvicorn` | ✅ | HTTP 服务器 |
+| `python-multipart` | ✅ | 音频文件上传解析（WAV → ASR） |
+| `nvidia-cublas-cu12` | ✅ | CTranslate2 GPU 推理所需 cuBLAS |
+
+扩展端（content.js / background.js / settings）为纯前端 JavaScript，无需额外安装。
 
 ### 3. 启动服务
 
