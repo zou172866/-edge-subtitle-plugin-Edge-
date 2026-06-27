@@ -731,12 +731,30 @@ class CaptionManager {
     if (allVideos.length === 0) return null;
     console.log("[RT-Caption] 找到 video:", allVideos.length);
 
-    // 优先选正在播放的
-    let best = allVideos.find(v => !v.paused);
-    if (best) return best;
+    // 多 video 时按"可见尺寸 > 播放状态"排序，避免选到推荐预览小窗
+    const scored = allVideos
+      .filter(v => {
+        const style = getComputedStyle(v);
+        return style.display !== "none" && style.visibility !== "hidden"
+          && v.offsetWidth > 0 && v.offsetHeight > 0;
+      })
+      .map(v => ({
+        video: v,
+        area: v.offsetWidth * v.offsetHeight,
+        playing: !v.paused && v.readyState >= 2,
+      }))
+      .sort((a, b) => {
+        // 先按面积降序，再按播放状态降序
+        if (b.area !== a.area) return b.area - a.area;
+        return (b.playing ? 1 : 0) - (a.playing ? 1 : 0);
+      });
 
-    // fallback: 第一个
-    return allVideos[0];
+    if (scored.length > 0) {
+      console.log("[RT-Caption] 选中 video:", scored[0].area, "px², playing:", scored[0].playing);
+      return scored[0].video;
+    }
+
+    return null;
   }
 
   _waitForVideo(timeout = 30000) {
